@@ -1,7 +1,7 @@
-const ArgvResovler = require("./argvresolver.js").ArgvResovler;
+const ArgvResolver = require("./argvresolver.js").ArgvResolver;
 const process = require("process");
 
-const argvResolver = new ArgvResovler(process.argv);
+const argvResolver = new ArgvResolver(process.argv);
 
 const param = {};
 

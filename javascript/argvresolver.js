@@ -1,5 +1,5 @@
 // 命令行参数解析
-class ArgvResovler {
+class ArgvResolver {
     constructor(argv) {
         this.argv = argv;
         this.strCmdListeners = new Map();
@@ -70,4 +70,4 @@ class ArgvResovler {
     }
 }
 
-exports.ArgvResovler = ArgvResovler;
+exports.ArgvResolver = ArgvResolver;
