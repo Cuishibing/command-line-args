@@ -6,26 +6,53 @@
 const ArgvResolver = require("./argvresolver.js").ArgvResolver;
 const process = require("process");
 
-const argvResolver = new ArgvResolver(process.argv);
+const argvResolver = new ArgvResolver();
 
 const param = {};
 
-// If there are no args, the usage are displayed.
-argvResolver.registerCommandListener("", () => {
+// 如果没有任何参数，则打印使用方法。
+argvResolver.registerParamListener("", () => {
     console.info("show usage!");
 })
 
-//  The prefix of the option is '-'.
-argvResolver.registerCommandListener(/^-\w+/, (name, values) => {
-    // Save options name and value to the param object.
+// 参数名称前缀为‘－’。
+argvResolver.registerParamListener(/^-\w+/, (name, values) => {
+    // 保存参数到param对象中。
     param[name.substring(1)] = values[0];
 })
 
-// Start the resolve process.
-argvResolver.resolve();
-
-function doSomething(param){
-    // Something...
+// 开始解析过程。
+// node js环境下要去掉第一和第二个参数。
+let realArgv = [];
+for (let i = 2; i < process.argv.length; i++) {
+    realArgv.push(process.argv[i]);
 }
+argvResolver.resolve(realArgv);
+
+(
+    function doSomething(param) {
+        // 打印出参数信息。
+        for(let k in param){
+            console.log("paramName:%s\tparamValue:%s",k,param[k]);
+        }
+    }
+)(param);
 ````
-## Java使用（待实现）
+## Java使用
+````java
+ArgvResolver argvResolver = new ArgvResolver();
+
+// 如果没有任何参数，则打印使用方法。
+argvResolver.registerParamListener("",(paramName,values)->{
+    System.out.println("show usage!");
+});
+
+// 参数名称前缀为‘－’。
+argvResolver.registerParamListener("(^-\\w+)|", (paramName, values) -> {
+    // 打印出参数名称和值。
+    System.out.println(String.format("paramName:%s\tvalues:%s", paramName, values.toString()));
+});
+
+// 开始解析过程。
+argvResolver.resolve(Arrays.asList("-action", "on"));
+````

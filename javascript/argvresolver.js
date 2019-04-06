@@ -1,28 +1,26 @@
 // 命令行参数解析
 class ArgvResolver {
-    constructor(argv) {
-        this.argv = argv;
-        this.strCmdListeners = new Map();
-        this.regExpCmdListeners = new Map();
-        this.paramMap = new Map();
+    constructor() {
+        this.paramListeners = new Map();
+        this.params = new Map();
     }
 
-    resolve() {
-        if (this.argv.length <= 2) {
-            let cml = this.strCmdListeners.get("");
-            if (cml)
-                cml("", []);
+    resolve(argv) {
+        if (argv == null || argv == undefined || argv.length < 1) {
+            let pl = this.paramListeners.get("");
+            if (pl)
+                pl("", []);
             return;
         }
         let lastParamName;
         let values = [];
         let lastParamListener;
-        for (let curIndex = 2; curIndex < this.argv.length; curIndex++) {
-            let curArg = this.argv[curIndex];
+        for (let curIndex = 0; curIndex < argv.length; curIndex++) {
+            let curArg = argv[curIndex];
             let curListener;
             if ((curListener = this._isParamName(curArg))) {
                 if (lastParamName != undefined) {
-                    this.paramMap.set(lastParamName, [values, lastParamListener]);
+                    this.params.set(lastParamName, [values, lastParamListener]);
                 }
                 lastParamName = curArg;
                 values = [];
@@ -32,24 +30,23 @@ class ArgvResolver {
             }
         }
         if (lastParamName != undefined)
-            this.paramMap.set(lastParamName, [values, lastParamListener]);
+            this.params.set(lastParamName, [values, lastParamListener]);
 
         this._invoke();
     }
 
     _invoke() {
-        this.paramMap.forEach((valuesAndListener, paramName) => {
+        this.params.forEach((valuesAndListener, paramName) => {
             valuesAndListener[1](paramName, valuesAndListener[0]);
         });
+        this.params.clear();
     }
 
     _isParamName(arg) {
-        return this.strCmdListeners.get(arg) || this._isRegExpParamName(arg);
-    }
-
-    _isRegExpParamName(arg) {
         let result = null;
-        this.regExpCmdListeners.forEach((v, k) => {
+        this.paramListeners.forEach((v, k) => {
+            if(k == "")
+                return true;
             let regExp = new RegExp(k.substring(1, k.length - 1));
             if (regExp.test(arg)) {
                 result = v;
@@ -59,14 +56,18 @@ class ArgvResolver {
         return result;
     }
 
-    registerCommandListener(pattern, listener = (() => { })) {
+    registerParamListener(pattern, listener = (() => { })) {
         if (typeof pattern == "string")
-            this.strCmdListeners.set(pattern, listener);
-        else if (pattern instanceof RegExp) {// regexp mode
-            this.regExpCmdListeners.set(pattern.toString(), listener);
+            this.paramListeners.set(pattern, listener);
+        else if (pattern instanceof RegExp) {// regexp
+            this.paramListeners.set(pattern.toString(), listener);
         } else {
             throw new Error("Unsupported pattern!");
         }
+    }
+
+    clearAllParamListeners() {
+        this.paramListeners.clear();
     }
 }
 

@@ -9,16 +9,20 @@ public class ArgvResolverTest {
     @Test
     public void test() {
         ArgvResolver argvResolver = new ArgvResolver();
-        argvResolver.registerParamListener("(^-\\w+)|(^--\\w+)|(^---\\w+)", (paramName, values) -> {
+
+        // 如果没有任何参数，则打印使用方法。
+        argvResolver.registerParamListener("",(paramName,values)->{
+            System.out.println("show usage!");
+        });
+
+        // 参数名称前缀为‘－’。
+        argvResolver.registerParamListener("(^-\\w+)|", (paramName, values) -> {
+            // 打印出参数名称和值。
             System.out.println(String.format("paramName:%s\tvalues:%s", paramName, values.toString()));
         });
-        argvResolver.resolve(Arrays.asList("-action", "on",  "--test" ,"-startTime", "2019-3-23",
-                "-name","cuishibing","-sex","man","---address","beijing","-school","xi'an keji daxue"));
 
-        argvResolver.registerParamListener("",(paramName,values)->{
-            System.out.println("this is usage!");
-        });
-        argvResolver.resolve((String[]) null);
+        // 开始解析过程。
+        argvResolver.resolve(Arrays.asList("-action", "on"));
     }
 
 }

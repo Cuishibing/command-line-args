@@ -14,9 +14,6 @@ public class ArgvResolver {
         private K first;
         private V second;
 
-        public TwoTuple() {
-        }
-
         public TwoTuple(K first, V second) {
             this.first = first;
             this.second = second;
