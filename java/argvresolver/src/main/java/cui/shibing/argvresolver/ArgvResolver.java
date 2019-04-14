@@ -1,91 +1,96 @@
 package cui.shibing.argvresolver;
 
-import java.util.*;
+import cui.shibing.argvresolver.exception.ResolveException;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static cui.shibing.argvresolver.exception.ResolveException.ERROR.*;
+
 public class ArgvResolver {
+    private Set<OptionDefinition> definitions = new HashSet<>();
 
-    private Map<String, ParamListener> paramListeners;
-
-    private Map<String, TwoTuple<List<String>, ParamListener>> params;
-
-    private static class TwoTuple<K, V> {
-        private K first;
-        private V second;
-
-        public TwoTuple(K first, V second) {
-            this.first = first;
-            this.second = second;
+    public void addOptionDefinition(OptionDefinition definition) {
+        if (definition == null) {
+            throw new RuntimeException("definition can not be null.");
         }
-    }
-
-    public ArgvResolver() {
-        this.paramListeners = new HashMap<>();
-        this.params = new HashMap<>();
-    }
-
-    public void registerParamListener(String pattern, ParamListener listener) {
-        this.paramListeners.put(pattern, listener);
-    }
-
-    public void clearAllParamListeners() {
-        this.paramListeners.clear();
-    }
-
-    public void resolve(Collection<String> argv) {
-        if (argv != null) {
-            String[] argvArray = new String[argv.size()];
-            argv.toArray(argvArray);
-            resolve(argvArray);
-        } else
-            resolve((String[]) null);
-    }
-
-    public void resolve(String[] argv) {
-        if (argv == null || argv.length < 1) {
-            ParamListener pl = this.paramListeners.get("");
-            if (pl != null)
-                pl.onParamAppear("", Collections.<String>emptyList());
-            return;
+        if (definitions.contains(definition)) {
+            throw new RuntimeException("duplicate definition.");
         }
-        String lastParamName = null;
-        List<String> lastParamValues = new ArrayList<>(2);
-        ParamListener lastListener = null;
-        for (String arg : argv) {
-            ParamListener paramListener = isParamName(arg);
-            if (paramListener != null) {// is param name
-                if (lastParamName != null) {
-                    this.params.put(lastParamName, new TwoTuple<>(lastParamValues, lastListener));
-                }
-                lastParamName = arg;
-                lastListener = paramListener;
-                lastParamValues = new ArrayList<>(2);
+        definitions.add(definition);
+    }
+
+    public List<String> resolve(String[] args) throws ResolveException {
+        if (args == null || args.length <= 0) {
+            throw new ResolveException("args can not be null or empty.", NO_ARGS,null);
+        }
+        boolean isFirst = true;
+        Option lastOption = null;
+        for (String arg : args) {
+            OptionDefinition od = match(arg);
+            if (od != null) {
+                invokeOptionCallback(lastOption);
+                lastOption = new Option(arg, od);
+                isFirst = false;
             } else {
-                lastParamValues.add(arg);
+                if (isFirst) {
+                    throw new ResolveException("un known option name.", UN_KNOWN_OPTION,null);
+                } else {
+                    lastOption.getOptionValues().add(arg);
+                }
             }
         }
-        if (lastParamName != null) {
-            this.params.put(lastParamName, new TwoTuple<>(lastParamValues, lastListener));
+        lastOption.setLast(true);
+        return invokeOptionCallback(lastOption);
+    }
+
+    private List<String> invokeOptionCallback(Option option) throws ResolveException {
+        List<String> result = Collections.emptyList();
+        if (option != null) {
+            if (!option.isLast()) {
+                checkOptionNum(option,true,true);
+                option.getDefinition().getOnOption().accept(option);
+                return result;
+            }
+            checkOptionNum(option,true,false);
+            OptionDefinition def = option.getDefinition();
+            int maxOption = def.getMaxOption();
+            List<String> optionValues = option.getOptionValues();
+            if(optionValues.size() > maxOption) {
+                List<String> realValues = optionValues.subList(0, maxOption);
+                option.setOptionValues(realValues);
+                // get remaining option values.
+                result = optionValues.subList(maxOption, optionValues.size());
+            }
+            option.getDefinition().getOnOption().accept(option);
+            return result;
         }
-
-        this.invoke();
+        return result;
     }
 
-    private void invoke() {
-        this.params.forEach((paramName, valuesAndListener) ->
-                valuesAndListener.second.onParamAppear(paramName, valuesAndListener.first));
-        this.params.clear();
+    private void checkOptionNum(Option option, boolean minCheck, boolean maxCheck) throws ResolveException {
+        OptionDefinition definition = option.getDefinition();
+        int min = definition.getMinOption();
+        int max = definition.getMaxOption();
+        List<String> values = option.getOptionValues();
+        boolean result = (minCheck ? values.size() >= min : true)
+                && (maxCheck ? values.size() <= max : true);
+        if (!result)
+            throw new ResolveException(
+                    String.format("option [%s]'s length not matching settings.", option.getOptionName()),
+                    MISMATCH_OPTION_NUM,option);
     }
 
-    private ParamListener isParamName(String arg) {
-        List<Map.Entry<String, ParamListener>> matchedListeners = this.paramListeners.entrySet().stream()
-                .filter(entry -> Pattern.matches(entry.getKey(), arg))
+    private OptionDefinition match(String value) {
+        List<OptionDefinition> matched = definitions
+                .stream()
+                .filter(entry -> Pattern.matches(entry.getPattern(), value))
                 .collect(Collectors.toList());
-        // 只取第一个
-        if (matchedListeners.size() > 0) {
-            return matchedListeners.get(0).getValue();
-        }
-        return null;
+        return matched.size() > 0 ? matched.get(0) : null;
     }
+
 }
