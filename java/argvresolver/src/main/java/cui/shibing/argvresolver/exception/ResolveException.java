@@ -3,13 +3,12 @@ package cui.shibing.argvresolver.exception;
 import cui.shibing.argvresolver.Option;
 
 public class ResolveException extends Exception{
-    public static enum ERROR {
+    public enum ErrorType {
         NO_ARGS,
-        UN_KNOWN_OPTION,
         MISMATCH_OPTION_NUM
     }
     private Option option;
-    private ERROR error;
+    private ErrorType errorType;
     public ResolveException() {
     }
 
@@ -17,17 +16,21 @@ public class ResolveException extends Exception{
         super(message);
     }
 
-    public ResolveException(String message,ERROR error,Option option) {
+    public ResolveException(String message, ErrorType errorType, Option option) {
         super(message);
-        this.error = error;
+        this.errorType = errorType;
         this.option = option;
     }
 
-    public ERROR getError() {
-        return error;
+    public Option getOption() {
+        return option;
     }
 
-    public void setError(ERROR error) {
-        this.error = error;
+    public ErrorType getErrorType() {
+        return errorType;
+    }
+
+    public void setErrorType(ErrorType errorType) {
+        this.errorType = errorType;
     }
 }
